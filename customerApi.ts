@@ -278,30 +278,67 @@ export async function uploadUserImage(
   fileUri: string,
   type: ImageUploadType,
 ): Promise<string> {
-  // Lấy extension từ URI
-  const ext = fileUri.split(".").pop()?.toLowerCase() || "jpg";
-  const mimeType = ext === "png" ? "image/png" : "image/jpeg";
-  const fileName = `${type}.${ext}`;
-  const storagePath = `${userId}/${fileName}`;
+  try {
+    // Kiểm tra Supabase credentials
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Cấu hình Supabase không đầy đủ");
+    }
 
-  // Đọc file thành blob (hoạt động cả trên React Native và Web)
-  const response = await fetch(fileUri);
-  const blob = await response.blob();
+    // Lấy extension từ URI
+    const ext = fileUri.split(".").pop()?.toLowerCase() || "jpg";
+    const mimeType = ext === "png" ? "image/png" : "image/jpeg";
+    const fileName = `${type}-${Date.now()}.${ext}`;
+    const storagePath = `${userId}/${fileName}`;
 
-  const { error } = await supabaseClient.storage
-    .from("user-assets")
-    .upload(storagePath, blob, {
-      contentType: mimeType,
-      upsert: true, // Ghi đè nếu đã tồn tại
-    });
+    // Đọc file thành blob (hoạt động cả trên React Native và Web)
+    const response = await fetch(fileUri);
+    
+    if (!response.ok) {
+      throw new Error("Không thể đọc file từ thiết bị");
+    }
+    
+    const blob = await response.blob();
 
-  if (error) {
-    throw new Error(`Upload ảnh thất bại: ${error.message}`);
+    // Kiểm tra kích thước file (max 5MB)
+    if (blob.size > 5 * 1024 * 1024) {
+      throw new Error("File quá lớn (tối đa 5MB)");
+    }
+
+    const { error, data } = await supabaseClient.storage
+      .from("user-assets")
+      .upload(storagePath, blob, {
+        contentType: mimeType,
+        upsert: true, // Ghi đè nếu đã tồn tại
+      });
+
+    if (error) {
+      // Chi tiết lỗi từ Supabase
+      console.error("Supabase upload error:", error);
+      
+      if (error.message.includes("Bucket not found")) {
+        throw new Error(
+          "Bucket 'user-assets' chưa được tạo. Hãy tạo bucket trong Supabase Dashboard"
+        );
+      }
+      if (error.message.includes("not found")) {
+        throw new Error("Dịch vụ lưu trữ không khả dụng");
+      }
+      
+      throw new Error(`Upload ảnh thất bại: ${error.message}`);
+    }
+
+    const { data: urlData } = supabaseClient.storage
+      .from("user-assets")
+      .getPublicUrl(storagePath);
+
+    if (!urlData?.publicUrl) {
+      throw new Error("Không thể lấy URL công khai của ảnh");
+    }
+
+    return urlData.publicUrl;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Lỗi không xác định";
+    console.error("Image upload error:", message);
+    throw new Error(message);
   }
-
-  const { data: urlData } = supabaseClient.storage
-    .from("user-assets")
-    .getPublicUrl(storagePath);
-
-  return urlData.publicUrl;
 }
