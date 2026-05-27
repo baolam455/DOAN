@@ -7,8 +7,9 @@ type ActivePage = "overview" | "orders" | "report" | "money" | "chat" | "profile
 
 type Props = {
     initials: string;
+    userName?: string;
+    userEmail?: string;
     activePage?: ActivePage;
-    onToggleQuickMenu: () => void;
     onPressOverview?: () => void;
     onPressOrders?: () => void;
     onPressReport?: () => void;
@@ -53,8 +54,9 @@ function SidebarButton({
 
 export default function DashboardSidebar({
     initials,
+    userName = "",
+    userEmail = "",
     activePage = "overview",
-    onToggleQuickMenu,
     onPressOverview,
     onPressOrders,
     onPressReport,
@@ -71,20 +73,28 @@ export default function DashboardSidebar({
 
     return (
         <View style={[styles.sidebar, { width: sidebarWidth }]}>
-            {/* ── TOP: Avatar + Profile + Logout ── */}
+            {/* ── TOP: Avatar + User Info + Profile + Logout ── */}
             <View style={styles.sidebarTop}>
-                {/* Avatar — bấm mở QuickMenu */}
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={onToggleQuickMenu}
-                    style={styles.avatarWrap}
-                >
+                {/* Avatar — hiển thị initials */}
+                <View style={styles.avatarWrap}>
                     <View style={styles.avatarCircle}>
                         <Text style={styles.avatarText}>{initials}</Text>
                     </View>
-                </TouchableOpacity>
+                </View>
 
-                {/* Hồ sơ tài khoản — nằm ngay dưới avatar */}
+                {/* Tên người dùng + Email — chỉ hiển thị khi không collapsed */}
+                {!collapsed && (
+                    <View style={styles.userInfoBox}>
+                        <Text style={styles.userName} numberOfLines={1}>
+                            {userName || "Người dùng"}
+                        </Text>
+                        <Text style={styles.userEmail} numberOfLines={1}>
+                            {userEmail || ""}
+                        </Text>
+                    </View>
+                )}
+
+                {/* Hồ sơ tài khoản — nằm ngay dưới */}
                 <SidebarButton
                     icon="account-circle-outline"
                     active={activePage === "profile"}
@@ -216,6 +226,31 @@ const styles = StyleSheet.create({
         color: "#FFFFFF",
         fontSize: 18,
         fontWeight: "700",
+    },
+
+    // Box hiển thị tên + email
+    userInfoBox: {
+        width: "100%",
+        paddingHorizontal: 6,
+        paddingVertical: 6,
+        marginBottom: 8,
+        alignItems: "center",
+    },
+
+    userName: {
+        fontSize: 12,
+        fontWeight: "600",
+        color: colors.text,
+        textAlign: "center",
+        maxWidth: "90%",
+    },
+
+    userEmail: {
+        fontSize: 10,
+        color: colors.textMuted,
+        textAlign: "center",
+        maxWidth: "90%",
+        marginTop: 2,
     },
 
     divider: {
